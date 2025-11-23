@@ -1,0 +1,283 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  LAWYER
+  STAFF
+  CLIENT
+}
+
+enum CaseStatus {
+  OPEN
+  PENDING
+  CLOSED
+  ON_HOLD
+}
+
+enum PracticeArea {
+  FAMILY
+  CRIMINAL
+  IMMIGRATION
+  BUSINESS
+  CIVIL
+  EMPLOYMENT
+  REAL_ESTATE
+  ESTATE_PLANNING
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+}
+
+enum DocumentType {
+  PLEADING
+  CONTRACT
+  LETTER
+  MOTION
+  BRIEF
+  FORM
+  EVIDENCE
+  OTHER
+}
+
+enum FilingStatus {
+  DRAFT
+  READY_TO_FILE
+  FILED
+  REJECTED
+}
+
+model User {
+  id             String   @id @default(uuid())
+  email          String   @unique
+  hashedPassword String
+  name           String
+  role           UserRole
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  casesAsLawyer   Case[]          @relation("LawyerCases")
+  tasks           Task[]
+  timeEntries     TimeEntry[]
+  messagesSent    Message[]
+  threadsCreated  MessageThread[]
+}
+
+model Client {
+  id          String   @id @default(uuid())
+  firstName   String
+  lastName    String
+  email       String
+  phone       String
+  address     String?
+  companyName String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  cases        Case[]
+  invoices     Invoice[]
+  intakeForms  IntakeForm[]
+}
+
+model Case {
+  id                   String        @id @default(uuid())
+  title                String
+  description          String
+  clientId             String
+  responsibleLawyerId  String
+  status               CaseStatus    @default(OPEN)
+  practiceArea         PracticeArea
+  courtName            String?
+  courtFileNumber      String?
+  openedAt             DateTime      @default(now())
+  closedAt             DateTime?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  // Relations
+  client               Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  responsibleLawyer    User          @relation("LawyerCases", fields: [responsibleLawyerId], references: [id])
+  tasks                Task[]
+  timeEntries          TimeEntry[]
+  invoices             Invoice[]
+  documents            Document[]
+  courtFilings         CourtFiling[]
+  messageThreads       MessageThread[]
+
+  @@index([clientId])
+  @@index([responsibleLawyerId])
+  @@index([status])
+}
+
+model Task {
+  id                String      @id @default(uuid())
+  caseId            String
+  title             String
+  description       String?
+  assignedToUserId  String
+  status            TaskStatus  @default(TODO)
+  dueDate           DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  // Relations
+  case              Case        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  assignedTo        User        @relation(fields: [assignedToUserId], references: [id])
+
+  @@index([caseId])
+  @@index([assignedToUserId])
+  @@index([status])
+}
+
+model TimeEntry {
+  id          String   @id @default(uuid())
+  caseId      String
+  userId      String
+  description String
+  date        DateTime
+  hours       Float
+  billable    Boolean  @default(true)
+  billingRate Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([caseId])
+  @@index([userId])
+  @@index([date])
+}
+
+model Invoice {
+  id            String        @id @default(uuid())
+  caseId        String
+  clientId      String
+  invoiceNumber String        @unique
+  issueDate     DateTime
+  dueDate       DateTime
+  status        InvoiceStatus @default(DRAFT)
+  totalAmount   Float
+  aiNarrative   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  case          Case          @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  client        Client        @relation(fields: [clientId], references: [id])
+
+  @@index([caseId])
+  @@index([clientId])
+  @@index([status])
+}
+
+model Document {
+  id          String       @id @default(uuid())
+  caseId      String
+  title       String
+  docType     DocumentType
+  content     String?      // For demo purposes, storing as text
+  storagePath String?
+  aiSummary   String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relations
+  case        Case         @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  filings     CourtFiling[]
+
+  @@index([caseId])
+  @@index([docType])
+}
+
+model IntakeForm {
+  id           String   @id @default(uuid())
+  clientId     String
+  caseType     String
+  rawAnswers   String   // JSON or text
+  aiSummary    String?
+  aiIssuesList String?  // JSON or text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+}
+
+model CourtFiling {
+  id              String        @id @default(uuid())
+  caseId          String
+  documentId      String?
+  filingType      String
+  courtName       String
+  dueDate         DateTime?
+  filedAt         DateTime?
+  status          FilingStatus  @default(DRAFT)
+  rejectionReason String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  case            Case          @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  document        Document?     @relation(fields: [documentId], references: [id])
+
+  @@index([caseId])
+  @@index([status])
+}
+
+model MessageThread {
+  id              String    @id @default(uuid())
+  caseId          String
+  subject         String
+  createdByUserId String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  case            Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  createdBy       User      @relation(fields: [createdByUserId], references: [id])
+  messages        Message[]
+
+  @@index([caseId])
+}
+
+model Message {
+  id           String        @id @default(uuid())
+  threadId     String
+  senderUserId String
+  content      String
+  sentAt       DateTime      @default(now())
+  readAt       DateTime?
+
+  // Relations
+  thread       MessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender       User          @relation(fields: [senderUserId], references: [id])
+
+  @@index([threadId])
+  @@index([senderUserId])
+}
