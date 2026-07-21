@@ -17,6 +17,7 @@ import {
 import { Add as AddIcon } from '@mui/icons-material';
 import LinkButton from '@/components/ui/LinkButton';
 import prisma from '@/lib/prisma';
+import { accessibleMatterWhere } from '@/lib/governance/policy';
 
 export default async function CasesPage() {
   const session = await getServerSession(authOptions);
@@ -25,8 +26,8 @@ export default async function CasesPage() {
     redirect('/login');
   }
 
-  // Fetch all cases with client and lawyer info
   const cases = await prisma.case.findMany({
+    where: accessibleMatterWhere(session.user.id, session.user.role),
     include: {
       client: true,
       responsibleLawyer: true,

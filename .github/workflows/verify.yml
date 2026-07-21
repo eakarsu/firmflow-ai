@@ -1,0 +1,52 @@
+name: verify
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  application:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: firmflow_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/firmflow_test
+      SHADOW_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/firmflow_shadow
+      NEXTAUTH_URL: https://firmflow.example.test
+      NEXTAUTH_SECRET: ci-secret-with-more-than-thirty-two-characters
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.12
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn migrate
+      - run: yarn migrate
+      - run: createdb --host 127.0.0.1 --username postgres firmflow_shadow
+        env:
+          PGPASSWORD: postgres
+      - run: yarn prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url "$SHADOW_DATABASE_URL" --exit-code
+      - run: yarn test
+      - run: yarn typecheck
+      - run: yarn lint
+      - run: yarn build
+      - run: yarn audit --groups dependencies --level high
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2

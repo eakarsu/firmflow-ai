@@ -2,40 +2,50 @@
   "name": "firmflow-ai",
   "version": "0.1.0",
   "private": true,
+  "resolutions": {
+    "postcss": "8.5.17",
+    "preact": "10.27.3",
+    "uuid": "11.1.1",
+    "yaml": "1.10.3"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
-  },
-  "prisma": {
-    "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "migrate": "prisma migrate deploy",
+    "bootstrap": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/bootstrap.ts",
+    "create-admin": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/bootstrap.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@mui/icons-material": "^7.3.5",
-    "@mui/material": "^7.3.5",
+    "@mui/icons-material": "6.5.0",
+    "@mui/material": "6.5.0",
     "@prisma/client": "6",
     "bcryptjs": "^3.0.3",
     "date-fns": "^4.1.0",
-    "next": "16.0.3",
-    "next-auth": "^4.24.13",
-    "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "dotenv": "^17.2.3",
+    "next": "16.2.10",
+    "next-auth": "4.24.14",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^3.0.0",
-    "@types/next-auth": "^3.15.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.0.3",
+    "eslint-config-next": "16.2.10",
     "prisma": "6",
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }

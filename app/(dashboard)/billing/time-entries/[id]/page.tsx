@@ -32,7 +32,7 @@ export default function TimeEntryDetailPage() {
         setTimeEntry(data);
         setLoading(false);
       })
-      .catch((err) => {
+      .catch(() => {
         setError('Failed to load time entry details');
         setLoading(false);
       });

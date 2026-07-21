@@ -21,6 +21,7 @@ import prisma from '@/lib/prisma';
 import BillingHeader from './BillingHeader';
 import InvoiceActions from './InvoiceActions';
 import TimeEntryActions from './TimeEntryActions';
+import { accessibleMatterWhere } from '@/lib/governance/policy';
 
 export default async function BillingPage() {
   const session = await getServerSession(authOptions);
@@ -29,8 +30,9 @@ export default async function BillingPage() {
     redirect('/login');
   }
 
-  // Fetch recent time entries
+  const matterWhere = accessibleMatterWhere(session.user.id, session.user.role);
   const timeEntries = await prisma.timeEntry.findMany({
+    where: { case: matterWhere },
     include: {
       case: {
         include: {
@@ -45,8 +47,8 @@ export default async function BillingPage() {
     take: 20,
   });
 
-  // Fetch invoices
   const invoices = await prisma.invoice.findMany({
+    where: { case: matterWhere },
     include: {
       case: true,
       client: true,

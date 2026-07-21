@@ -10,9 +10,7 @@ import {
   Box,
   MenuItem,
   Alert,
-  CircularProgress,
 } from '@mui/material';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 export default function NewInvoicePage() {
   const router = useRouter();
@@ -20,8 +18,6 @@ export default function NewInvoicePage() {
   const [error, setError] = useState('');
   const [cases, setCases] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
-  const [aiGenerating, setAiGenerating] = useState(false);
-  const [aiNarrative, setAiNarrative] = useState('');
 
   const [formData, setFormData] = useState({
     caseId: '',
@@ -48,46 +44,6 @@ export default function NewInvoicePage() {
       .catch(() => setError('Failed to load clients'));
   }, []);
 
-  const handleGenerateAINarrative = async () => {
-    if (!formData.caseId) {
-      setError('Please select a case first');
-      return;
-    }
-
-    setAiGenerating(true);
-    setError('');
-
-    try {
-      // Fetch time entries for this case
-      const timeEntriesResponse = await fetch(`/api/time-entries?caseId=${formData.caseId}`);
-      const timeEntries = await timeEntriesResponse.json();
-
-      const selectedCase = cases.find((c) => c.id === formData.caseId);
-
-      const response = await fetch('/api/ai/invoice-summary', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          caseTitle: selectedCase?.title || '',
-          timeEntries: timeEntries.map((te: any) => ({
-            description: te.description,
-            hours: te.hours,
-            date: te.date,
-          })),
-        }),
-      });
-
-      if (!response.ok) throw new Error('Failed to generate narrative');
-
-      const data = await response.json();
-      setFormData({ ...formData, aiNarrative: data.narrative });
-    } catch (err) {
-      setError('Failed to generate AI narrative. Please try again.');
-    } finally {
-      setAiGenerating(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -103,7 +59,7 @@ export default function NewInvoicePage() {
       if (!response.ok) throw new Error('Failed to create invoice');
 
       router.push('/billing');
-    } catch (err) {
+    } catch {
       setError('Failed to create invoice. Please try again.');
     } finally {
       setLoading(false);
@@ -222,19 +178,10 @@ export default function NewInvoicePage() {
           </TextField>
 
           <Box sx={{ mb: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            <Box sx={{ mb: 1 }}>
               <Typography variant="body2" color="text.secondary">
                 Invoice Narrative (Optional)
               </Typography>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={aiGenerating ? <CircularProgress size={16} /> : <AutoAwesomeIcon />}
-                onClick={handleGenerateAINarrative}
-                disabled={!formData.caseId || aiGenerating}
-              >
-                {aiGenerating ? 'Generating...' : 'Generate with AI'}
-              </Button>
             </Box>
             <TextField
               fullWidth
@@ -242,7 +189,7 @@ export default function NewInvoicePage() {
               onChange={(e) => setFormData({ ...formData, aiNarrative: e.target.value })}
               multiline
               rows={4}
-              placeholder="AI can generate a professional summary of work performed based on time entries..."
+              placeholder="Enter a reviewed summary of the work performed"
             />
           </Box>
 

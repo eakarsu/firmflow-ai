@@ -63,7 +63,7 @@ export default function ClientDetailPage() {
         setClientData(data);
         setLoading(false);
       })
-      .catch((err) => {
+      .catch(() => {
         setError('Failed to load client details');
         setLoading(false);
       });
@@ -254,7 +254,7 @@ export default function ClientDetailPage() {
                     <TableCell>Matter Type</TableCell>
                     <TableCell>Status</TableCell>
                     <TableCell>Submitted</TableCell>
-                    <TableCell>AI Summary</TableCell>
+                    <TableCell>Recorded Summary</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>

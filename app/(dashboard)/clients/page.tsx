@@ -16,6 +16,7 @@ import {
 import { Add as AddIcon } from '@mui/icons-material';
 import LinkButton from '@/components/ui/LinkButton';
 import prisma from '@/lib/prisma';
+import { accessibleClientWhere, accessibleMatterWhere } from '@/lib/governance/policy';
 
 export default async function ClientsPage() {
   const session = await getServerSession(authOptions);
@@ -24,11 +25,12 @@ export default async function ClientsPage() {
     redirect('/login');
   }
 
-  // Fetch all clients with case count
+  const matterWhere = accessibleMatterWhere(session.user.id, session.user.role);
   const clients = await prisma.client.findMany({
+    where: accessibleClientWhere(session.user.id, session.user.role),
     include: {
       _count: {
-        select: { cases: true },
+        select: { cases: { where: matterWhere } },
       },
     },
     orderBy: {

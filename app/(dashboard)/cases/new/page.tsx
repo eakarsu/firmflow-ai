@@ -59,7 +59,7 @@ export default function NewCasePage() {
 
       const newCase = await response.json();
       router.push(`/cases/${newCase.id}`);
-    } catch (err) {
+    } catch {
       setError('Failed to create case. Please try again.');
     } finally {
       setLoading(false);

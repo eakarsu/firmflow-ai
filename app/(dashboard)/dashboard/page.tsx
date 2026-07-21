@@ -10,7 +10,7 @@ import {
   Paper,
 } from '@mui/material';
 import prisma from '@/lib/prisma';
-import AIKPIInsights from './AIKPIInsights';
+import { accessibleMatterWhere } from '@/lib/governance/policy';
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -19,22 +19,24 @@ export default async function DashboardPage() {
     redirect('/login');
   }
 
-  // Fetch dashboard statistics
+  const matterWhere = accessibleMatterWhere(session.user.id, session.user.role);
   const [totalCases, totalClients, totalTasks, openCases] = await Promise.all([
-    prisma.case.count(),
-    prisma.client.count(),
+    prisma.case.count({ where: matterWhere }),
+    prisma.client.count({ where: { cases: { some: matterWhere } } }),
     prisma.task.count({
       where: {
+        case: matterWhere,
         status: { in: ['TODO', 'IN_PROGRESS'] },
       },
     }),
     prisma.case.count({
-      where: { status: 'OPEN' },
+      where: { ...matterWhere, status: 'OPEN' },
     }),
   ]);
 
   // Fetch recent cases
   const recentCases = await prisma.case.findMany({
+    where: matterWhere,
     take: 5,
     orderBy: { createdAt: 'desc' },
     include: {
@@ -54,14 +56,7 @@ export default async function DashboardPage() {
             Role: {session.user.role}
           </Typography>
         </Box>
-        <AIKPIInsights
-          kpiData={{
-            totalCases,
-            totalClients,
-            totalTasks,
-            openCases,
-          }}
-        />
+        <Typography variant="body2" color="text.secondary">Metrics are calculated from matters you are authorized to access.</Typography>
       </Box>
 
       {/* Statistics Cards */}

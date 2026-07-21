@@ -1,0 +1,2 @@
+import { NextRequest } from 'next/server';import{apiActor,failure,response}from'@/lib/governance/http';import{revokeAccess}from'@/lib/governance/service';
+export async function DELETE(_request:NextRequest,{params}:{params:Promise<{id:string;userId:string}>}){try{const value=await params;return response(await revokeAccess((await apiActor()).id,value.id,value.userId))}catch(error){return failure(error)}}

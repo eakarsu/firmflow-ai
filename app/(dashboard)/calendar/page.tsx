@@ -11,8 +11,9 @@ import {
   CardContent,
   Chip,
 } from '@mui/material';
-import { Event as EventIcon, Gavel as CourtIcon, Task as TaskIcon } from '@mui/icons-material';
+import { Gavel as CourtIcon, Task as TaskIcon } from '@mui/icons-material';
 import prisma from '@/lib/prisma';
+import { accessibleMatterWhere } from '@/lib/governance/policy';
 
 export default async function CalendarPage() {
   const session = await getServerSession(authOptions);
@@ -21,9 +22,10 @@ export default async function CalendarPage() {
     redirect('/login');
   }
 
-  // Fetch upcoming tasks
+  const matterWhere = accessibleMatterWhere(session.user.id, session.user.role);
   const upcomingTasks = await prisma.task.findMany({
     where: {
+      case: matterWhere,
       dueDate: {
         gte: new Date(),
       },
@@ -45,9 +47,9 @@ export default async function CalendarPage() {
     take: 10,
   });
 
-  // Fetch upcoming court filings
   const upcomingFilings = await prisma.courtFiling.findMany({
     where: {
+      case: matterWhere,
       dueDate: {
         gte: new Date(),
       },

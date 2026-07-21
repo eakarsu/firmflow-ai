@@ -66,21 +66,65 @@ enum FilingStatus {
   REJECTED
 }
 
+enum MatterAccessRole {
+  VIEWER
+  EDITOR
+  COUNSEL
+  OWNER
+}
+
+enum ProvenanceType {
+  UPLOAD
+  OCR
+  AUTHORITATIVE_TEMPLATE
+  HUMAN
+  AI_DRAFT
+  REDACTION
+  CORRECTION
+}
+
+enum ReviewDecision {
+  APPROVED
+  REJECTED
+}
+
+enum ProviderOperationKind {
+  OCR
+  ESIGN
+  STORAGE
+  FILING
+  TEMPLATE
+  LEGAL_DRAFT
+}
+
+enum ProviderOperationState {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
 model User {
   id             String   @id @default(uuid())
   email          String   @unique
   hashedPassword String
   name           String
   role           UserRole
+  active         Boolean  @default(true)
+  tokenVersion   Int      @default(1)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   // Relations
-  casesAsLawyer   Case[]          @relation("LawyerCases")
-  tasks           Task[]
-  timeEntries     TimeEntry[]
-  messagesSent    Message[]
-  threadsCreated  MessageThread[]
+  casesAsLawyer    Case[]                 @relation("LawyerCases")
+  tasks            Task[]
+  timeEntries      TimeEntry[]
+  messagesSent     Message[]
+  threadsCreated   MessageThread[]
+  matterAccess     CaseAccess[]
+  documentVersions DocumentVersion[]      @relation("VersionAuthor")
+  documentReviews  DocumentReview[]       @relation("DocumentReviewer")
+  auditEvents      GovernanceAuditEvent[] @relation("AuditActor")
+  createdClients   Client[]               @relation("ClientCreator")
 }
 
 model Client {
@@ -92,39 +136,45 @@ model Client {
   address     String?
   companyName String?
   notes       String?
+  createdById String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   // Relations
-  cases        Case[]
-  invoices     Invoice[]
-  intakeForms  IntakeForm[]
+  cases       Case[]
+  invoices    Invoice[]
+  intakeForms IntakeForm[]
+  createdBy   User?        @relation("ClientCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([createdById])
 }
 
 model Case {
-  id                   String        @id @default(uuid())
-  title                String
-  description          String
-  clientId             String
-  responsibleLawyerId  String
-  status               CaseStatus    @default(OPEN)
-  practiceArea         PracticeArea
-  courtName            String?
-  courtFileNumber      String?
-  openedAt             DateTime      @default(now())
-  closedAt             DateTime?
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
+  id                  String       @id @default(uuid())
+  title               String
+  description         String
+  clientId            String
+  responsibleLawyerId String
+  status              CaseStatus   @default(OPEN)
+  practiceArea        PracticeArea
+  courtName           String?
+  courtFileNumber     String?
+  openedAt            DateTime     @default(now())
+  closedAt            DateTime?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
 
   // Relations
-  client               Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  responsibleLawyer    User          @relation("LawyerCases", fields: [responsibleLawyerId], references: [id])
-  tasks                Task[]
-  timeEntries          TimeEntry[]
-  invoices             Invoice[]
-  documents            Document[]
-  courtFilings         CourtFiling[]
-  messageThreads       MessageThread[]
+  client            Client                 @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  responsibleLawyer User                   @relation("LawyerCases", fields: [responsibleLawyerId], references: [id])
+  tasks             Task[]
+  timeEntries       TimeEntry[]
+  invoices          Invoice[]
+  documents         Document[]
+  courtFilings      CourtFiling[]
+  messageThreads    MessageThread[]
+  access            CaseAccess[]
+  auditEvents       GovernanceAuditEvent[]
 
   @@index([clientId])
   @@index([responsibleLawyerId])
@@ -132,19 +182,19 @@ model Case {
 }
 
 model Task {
-  id                String      @id @default(uuid())
-  caseId            String
-  title             String
-  description       String?
-  assignedToUserId  String
-  status            TaskStatus  @default(TODO)
-  dueDate           DateTime?
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  id               String     @id @default(uuid())
+  caseId           String
+  title            String
+  description      String?
+  assignedToUserId String
+  status           TaskStatus @default(TODO)
+  dueDate          DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 
   // Relations
-  case              Case        @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  assignedTo        User        @relation(fields: [assignedToUserId], references: [id])
+  case       Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  assignedTo User @relation(fields: [assignedToUserId], references: [id])
 
   @@index([caseId])
   @@index([assignedToUserId])
@@ -164,8 +214,8 @@ model TimeEntry {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [userId], references: [id])
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
 
   @@index([caseId])
   @@index([userId])
@@ -186,8 +236,8 @@ model Invoice {
   updatedAt     DateTime      @updatedAt
 
   // Relations
-  case          Case          @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  client        Client        @relation(fields: [clientId], references: [id])
+  case   Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id])
 
   @@index([caseId])
   @@index([clientId])
@@ -195,88 +245,233 @@ model Invoice {
 }
 
 model Document {
-  id          String       @id @default(uuid())
-  caseId      String
-  title       String
-  docType     DocumentType
-  content     String?      // For demo purposes, storing as text
-  storagePath String?
-  aiSummary   String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id              String       @id @default(uuid())
+  caseId          String
+  title           String
+  docType         DocumentType
+  content         String? // For demo purposes, storing as text
+  storagePath     String?
+  aiSummary       String?
+  privileged      Boolean      @default(false)
+  currentVersion  Int          @default(1)
+  retentionUntil  DateTime?
+  legalHold       Boolean      @default(false)
+  legalHoldReason String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   // Relations
-  case        Case         @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  filings     CourtFiling[]
+  case               Case                        @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  filings            CourtFiling[]
+  versions           DocumentVersion[]
+  reviews            DocumentReview[]
+  providerOperations DocumentProviderOperation[]
+  exports            DocumentExport[]
+  auditEvents        GovernanceAuditEvent[]
 
   @@index([caseId])
   @@index([docType])
+}
+
+model CaseAccess {
+  id               String           @id @default(uuid())
+  caseId           String
+  userId           String
+  role             MatterAccessRole
+  privilegedAccess Boolean          @default(false)
+  revokedAt        DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  case             Case             @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, userId])
+  @@index([userId, revokedAt])
+}
+
+model AuthoritativeTemplate {
+  id               String    @id @default(uuid())
+  sourceSystem     String
+  externalId       String
+  title            String
+  jurisdiction     String
+  effectiveFrom    DateTime
+  effectiveUntil   DateTime?
+  contentHash      String
+  providerEvidence Json
+  createdAt        DateTime  @default(now())
+
+  @@unique([sourceSystem, externalId, effectiveFrom])
+}
+
+model DocumentVersion {
+  id                  String           @id @default(uuid())
+  documentId          String
+  version             Int
+  content             String?
+  contentHash         String
+  provenanceType      ProvenanceType
+  sourceReference     String
+  templateId          String?
+  jurisdiction        String
+  effectiveDate       DateTime
+  generatedModel      String?
+  promptHash          String?
+  requiresLegalReview Boolean          @default(true)
+  authorId            String
+  createdAt           DateTime         @default(now())
+  document            Document         @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  author              User             @relation("VersionAuthor", fields: [authorId], references: [id])
+  reviews             DocumentReview[]
+
+  @@unique([documentId, version])
+  @@index([documentId, createdAt])
+}
+
+model DocumentReview {
+  id                String          @id @default(uuid())
+  documentId        String
+  documentVersionId String
+  reviewerId        String
+  decision          ReviewDecision
+  jurisdiction      String
+  effectiveDate     DateTime
+  sourceValidated   Boolean
+  notes             String
+  createdAt         DateTime        @default(now())
+  document          Document        @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentVersion   DocumentVersion @relation(fields: [documentVersionId], references: [id], onDelete: Cascade)
+  reviewer          User            @relation("DocumentReviewer", fields: [reviewerId], references: [id])
+
+  @@unique([documentVersionId, reviewerId])
+  @@index([documentId, createdAt])
+}
+
+model DocumentProviderOperation {
+  id               String                 @id @default(uuid())
+  documentId       String
+  kind             ProviderOperationKind
+  idempotencyKey   String
+  state            ProviderOperationState @default(PENDING)
+  provider         String
+  externalId       String?
+  requestHash      String
+  responseEvidence Json?
+  failureCode      String?
+  attempts         Int                    @default(0)
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  document         Document               @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, kind, idempotencyKey])
+}
+
+model ProviderWebhookEvent {
+  id          String   @id @default(uuid())
+  provider    String
+  eventId     String
+  payloadHash String
+  receivedAt  DateTime @default(now())
+
+  @@unique([provider, eventId])
+}
+
+model DocumentExport {
+  id           String   @id @default(uuid())
+  documentId   String
+  version      Int
+  manifest     Json
+  manifestHash String
+  createdAt    DateTime @default(now())
+  document     Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, createdAt])
+}
+
+model GovernanceAuditEvent {
+  id           String    @id @default(uuid())
+  sequence     BigInt
+  caseId       String
+  documentId   String?
+  actorId      String?
+  action       String
+  details      Json
+  previousHash String
+  eventHash    String
+  createdAt    DateTime
+  case         Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  document     Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  actor        User?     @relation("AuditActor", fields: [actorId], references: [id])
+
+  @@unique([caseId, sequence])
+  @@unique([caseId, eventHash])
+  @@index([caseId, sequence])
 }
 
 model IntakeForm {
   id           String   @id @default(uuid())
   clientId     String
   caseType     String
-  rawAnswers   String   // JSON or text
+  rawAnswers   String // JSON or text
   aiSummary    String?
-  aiIssuesList String?  // JSON or text
+  aiIssuesList String? // JSON or text
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   // Relations
-  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId])
 }
 
 model CourtFiling {
-  id              String        @id @default(uuid())
+  id              String       @id @default(uuid())
   caseId          String
   documentId      String?
   filingType      String
   courtName       String
   dueDate         DateTime?
   filedAt         DateTime?
-  status          FilingStatus  @default(DRAFT)
+  status          FilingStatus @default(DRAFT)
   rejectionReason String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   // Relations
-  case            Case          @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  document        Document?     @relation(fields: [documentId], references: [id])
+  case     Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  document Document? @relation(fields: [documentId], references: [id])
 
   @@index([caseId])
   @@index([status])
 }
 
 model MessageThread {
-  id              String    @id @default(uuid())
+  id              String   @id @default(uuid())
   caseId          String
   subject         String
   createdByUserId String
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   // Relations
-  case            Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  createdBy       User      @relation(fields: [createdByUserId], references: [id])
-  messages        Message[]
+  case      Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  createdBy User      @relation(fields: [createdByUserId], references: [id])
+  messages  Message[]
 
   @@index([caseId])
 }
 
 model Message {
-  id           String        @id @default(uuid())
+  id           String    @id @default(uuid())
   threadId     String
   senderUserId String
   content      String
-  sentAt       DateTime      @default(now())
+  sentAt       DateTime  @default(now())
   readAt       DateTime?
 
   // Relations
-  thread       MessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  sender       User          @relation(fields: [senderUserId], references: [id])
+  thread MessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender User          @relation(fields: [senderUserId], references: [id])
 
   @@index([threadId])
   @@index([senderUserId])

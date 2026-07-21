@@ -39,7 +39,7 @@ export default function InvoiceDetailPage() {
         setInvoice(data);
         setLoading(false);
       })
-      .catch((err) => {
+      .catch(() => {
         setError('Failed to load invoice details');
         setLoading(false);
       });
@@ -212,7 +212,7 @@ export default function InvoiceDetailPage() {
         </Paper>
       )}
 
-      {/* AI Narrative */}
+      {/* Reviewed invoice narrative */}
       {invoice.aiNarrative && (
         <Paper sx={{ p: 3, bgcolor: '#e3f2fd' }}>
           <Typography variant="h6" gutterBottom>

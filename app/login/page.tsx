@@ -39,7 +39,7 @@ export default function LoginPage() {
         router.push('/dashboard');
         router.refresh();
       }
-    } catch (error) {
+    } catch {
       setError('An error occurred. Please try again.');
     } finally {
       setLoading(false);
@@ -59,7 +59,7 @@ export default function LoginPage() {
         <Card sx={{ width: '100%', maxWidth: 500 }}>
           <CardContent sx={{ p: 4 }}>
             <Typography variant="h4" component="h1" gutterBottom align="center">
-              FirmFlow AI
+              FirmFlow
             </Typography>
             <Typography
               variant="body2"
@@ -112,20 +112,6 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <Box sx={{ mt: 4, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
-              <Typography variant="caption" display="block" gutterBottom>
-                <strong>Demo Credentials:</strong>
-              </Typography>
-              <Typography variant="caption" display="block">
-                Admin: admin@firmflow.ai / password123
-              </Typography>
-              <Typography variant="caption" display="block">
-                Lawyer: sarah.johnson@firmflow.ai / password123
-              </Typography>
-              <Typography variant="caption" display="block">
-                Staff: jennifer.smith@firmflow.ai / password123
-              </Typography>
-            </Box>
           </CardContent>
         </Card>
       </Box>

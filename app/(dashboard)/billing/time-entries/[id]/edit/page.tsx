@@ -13,7 +13,6 @@ import {
   FormControlLabel,
   Checkbox,
 } from '@mui/material';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 export default function EditTimeEntryPage() {
   const params = useParams();
@@ -22,7 +21,6 @@ export default function EditTimeEntryPage() {
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [error, setError] = useState('');
-  const [aiPolishing, setAiPolishing] = useState(false);
 
   const [formData, setFormData] = useState({
     description: '',
@@ -57,38 +55,6 @@ export default function EditTimeEntryPage() {
       });
   }, [id]);
 
-  const handlePolishWithAI = async () => {
-    if (!formData.description.trim()) {
-      setError('Please enter a description first');
-      return;
-    }
-
-    setAiPolishing(true);
-    setError('');
-
-    try {
-      const caseContext = timeEntryData?.case?.title || '';
-
-      const response = await fetch('/api/ai/time-description', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rawNotes: formData.description,
-          caseContext,
-        }),
-      });
-
-      if (!response.ok) throw new Error('Failed to polish description');
-
-      const data = await response.json();
-      setFormData({ ...formData, description: data.description });
-    } catch (err) {
-      setError('Failed to polish description with AI. Please try again.');
-    } finally {
-      setAiPolishing(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -104,7 +70,7 @@ export default function EditTimeEntryPage() {
       if (!response.ok) throw new Error('Failed to update time entry');
 
       router.push('/billing');
-    } catch (err) {
+    } catch {
       setError('Failed to update time entry. Please try again.');
     } finally {
       setLoading(false);
@@ -145,19 +111,10 @@ export default function EditTimeEntryPage() {
 
         <form onSubmit={handleSubmit}>
           <Box sx={{ mb: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            <Box sx={{ mb: 1 }}>
               <Typography variant="body2" color="text.secondary">
                 Description *
               </Typography>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={aiPolishing ? <CircularProgress size={16} /> : <AutoAwesomeIcon />}
-                onClick={handlePolishWithAI}
-                disabled={!formData.description.trim() || aiPolishing}
-              >
-                {aiPolishing ? 'Polishing...' : 'Polish with AI'}
-              </Button>
             </Box>
             <TextField
               fullWidth
@@ -166,7 +123,7 @@ export default function EditTimeEntryPage() {
               multiline
               rows={4}
               required
-              placeholder="Enter rough notes and use AI to polish..."
+              placeholder="Describe the work performed using client-safe billing language"
             />
           </Box>
 

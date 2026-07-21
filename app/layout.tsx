@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FirmFlow AI - Law Firm Management",
-  description: "Professional law firm management system with AI-powered features",
+  title: "FirmFlow - Governed Legal Workflow",
+  description: "Matter-scoped legal document and law firm workflow management",
 };
 
 export default function RootLayout({

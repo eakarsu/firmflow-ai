@@ -25,8 +25,9 @@ export default async function SettingsPage() {
     redirect('/login');
   }
 
-  // Fetch all users
   const users = await prisma.user.findMany({
+    where: session.user.role === 'ADMIN' ? { active: true } : { id: session.user.id, active: true },
+    select: { id: true, name: true, email: true, role: true, createdAt: true },
     orderBy: {
       createdAt: 'desc',
     },
@@ -106,7 +107,7 @@ export default async function SettingsPage() {
                   Database: PostgreSQL
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  AI Provider: OpenRouter
+                  Document providers: governed adapters (fail closed until configured)
                 </Typography>
               </Box>
             </CardContent>

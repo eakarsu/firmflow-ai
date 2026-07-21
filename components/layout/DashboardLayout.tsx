@@ -42,7 +42,7 @@ const navigationItems = [
   { text: 'Calendar', icon: <CalendarIcon />, path: '/calendar' },
   { text: 'Billing', icon: <BillingIcon />, path: '/billing' },
   { text: 'Documents', icon: <DocumentsIcon />, path: '/documents' },
-  { text: 'AI Documents', icon: <AIIcon />, path: '/ai-documents' },
+  { text: 'Drafting Policy', icon: <AIIcon />, path: '/ai-documents' },
   { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
 ];
 

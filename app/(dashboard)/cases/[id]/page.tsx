@@ -20,13 +20,7 @@ import {
   Tab,
   Alert,
   CircularProgress,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
 } from '@mui/material';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -56,9 +50,6 @@ export default function CaseDetailPage() {
   const [error, setError] = useState('');
   const [caseData, setCaseData] = useState<any>(null);
   const [tabValue, setTabValue] = useState(0);
-  const [aiChecklistGenerating, setAiChecklistGenerating] = useState(false);
-  const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
-  const [aiChecklist, setAiChecklist] = useState('');
 
   useEffect(() => {
     fetch(`/api/cases/${id}`)
@@ -70,38 +61,11 @@ export default function CaseDetailPage() {
         setCaseData(data);
         setLoading(false);
       })
-      .catch((err) => {
+      .catch(() => {
         setError('Failed to load case details');
         setLoading(false);
       });
   }, [id]);
-
-  const handleGenerateFilingChecklist = async () => {
-    setAiChecklistGenerating(true);
-    setError('');
-
-    try {
-      const response = await fetch('/api/ai/filing-checklist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          caseType: caseData.practiceArea,
-          jurisdiction: caseData.courtName || 'General',
-          filingType: 'Standard Filing',
-        }),
-      });
-
-      if (!response.ok) throw new Error('Failed to generate checklist');
-
-      const data = await response.json();
-      setAiChecklist(data.checklist);
-      setChecklistDialogOpen(true);
-    } catch (err) {
-      setError('Failed to generate AI checklist. Please try again.');
-    } finally {
-      setAiChecklistGenerating(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -132,7 +96,7 @@ export default function CaseDetailPage() {
 
   return (
     <>
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+      <Box sx={{ mb: 3 }}>
         <Box>
           <Typography variant="h4" component="h1" gutterBottom>
             {caseData.title}
@@ -140,14 +104,6 @@ export default function CaseDetailPage() {
           <Chip label={caseData.status} color="primary" sx={{ mr: 1 }} />
           <Chip label={caseData.practiceArea} variant="outlined" />
         </Box>
-        <Button
-          variant="outlined"
-          startIcon={aiChecklistGenerating ? <CircularProgress size={16} /> : <AutoAwesomeIcon />}
-          onClick={handleGenerateFilingChecklist}
-          disabled={aiChecklistGenerating}
-        >
-          {aiChecklistGenerating ? 'Generating...' : 'AI Filing Checklist'}
-        </Button>
       </Box>
 
       {/* Summary Cards */}
@@ -345,7 +301,7 @@ export default function CaseDetailPage() {
                     <TableCell>Title</TableCell>
                     <TableCell>Type</TableCell>
                     <TableCell>Created</TableCell>
-                    <TableCell>AI Summary</TableCell>
+                    <TableCell>Recorded Summary</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -402,22 +358,6 @@ export default function CaseDetailPage() {
           )}
         </TabPanel>
       </Paper>
-
-      {/* AI Filing Checklist Dialog */}
-      <Dialog open={checklistDialogOpen} onClose={() => setChecklistDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>AI Filing Checklist</DialogTitle>
-        <DialogContent>
-          <Alert severity="info" sx={{ mb: 2 }}>
-            This AI-generated checklist provides general guidance. Always verify requirements with your court and jurisdiction.
-          </Alert>
-          <Box sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.875rem', p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-            {aiChecklist}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setChecklistDialogOpen(false)}>Close</Button>
-        </DialogActions>
-      </Dialog>
     </>
   );
 }

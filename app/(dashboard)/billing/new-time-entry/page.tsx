@@ -12,16 +12,13 @@ import {
   Alert,
   FormControlLabel,
   Checkbox,
-  CircularProgress,
 } from '@mui/material';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 export default function NewTimeEntryPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [cases, setCases] = useState<any[]>([]);
-  const [aiPolishing, setAiPolishing] = useState(false);
 
   const [formData, setFormData] = useState({
     caseId: '',
@@ -40,39 +37,6 @@ export default function NewTimeEntryPage() {
       .catch(() => setError('Failed to load cases'));
   }, []);
 
-  const handlePolishWithAI = async () => {
-    if (!formData.description.trim()) {
-      setError('Please enter a description first');
-      return;
-    }
-
-    setAiPolishing(true);
-    setError('');
-
-    try {
-      const selectedCase = cases.find((c) => c.id === formData.caseId);
-      const caseContext = selectedCase ? selectedCase.title : '';
-
-      const response = await fetch('/api/ai/time-description', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rawNotes: formData.description,
-          caseContext,
-        }),
-      });
-
-      if (!response.ok) throw new Error('Failed to polish description');
-
-      const data = await response.json();
-      setFormData({ ...formData, description: data.description });
-    } catch (err) {
-      setError('Failed to polish description with AI. Please try again.');
-    } finally {
-      setAiPolishing(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -88,7 +52,7 @@ export default function NewTimeEntryPage() {
       if (!response.ok) throw new Error('Failed to create time entry');
 
       router.push('/billing');
-    } catch (err) {
+    } catch {
       setError('Failed to create time entry. Please try again.');
     } finally {
       setLoading(false);
@@ -126,19 +90,10 @@ export default function NewTimeEntryPage() {
           </TextField>
 
           <Box sx={{ mb: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            <Box sx={{ mb: 1 }}>
               <Typography variant="body2" color="text.secondary">
                 Description *
               </Typography>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={aiPolishing ? <CircularProgress size={16} /> : <AutoAwesomeIcon />}
-                onClick={handlePolishWithAI}
-                disabled={!formData.description.trim() || aiPolishing}
-              >
-                {aiPolishing ? 'Polishing...' : 'Polish with AI'}
-              </Button>
             </Box>
             <TextField
               fullWidth
@@ -147,7 +102,7 @@ export default function NewTimeEntryPage() {
               multiline
               rows={4}
               required
-              placeholder="Enter rough notes (e.g., 'reviewed discovery docs, drafted response') and use AI to polish..."
+              placeholder="Describe the work performed using client-safe billing language"
             />
           </Box>
 

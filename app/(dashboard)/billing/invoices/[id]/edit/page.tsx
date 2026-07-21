@@ -12,7 +12,6 @@ import {
   Alert,
   CircularProgress,
 } from '@mui/material';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 export default function EditInvoicePage() {
   const params = useParams();
@@ -21,7 +20,6 @@ export default function EditInvoicePage() {
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [error, setError] = useState('');
-  const [aiGenerating, setAiGenerating] = useState(false);
 
   const [formData, setFormData] = useState({
     invoiceNumber: '',
@@ -32,8 +30,6 @@ export default function EditInvoicePage() {
     aiNarrative: '',
   });
 
-  const [invoiceData, setInvoiceData] = useState<any>(null);
-
   useEffect(() => {
     fetch(`/api/invoices/${id}`)
       .then((res) => {
@@ -41,7 +37,6 @@ export default function EditInvoicePage() {
         return res.json();
       })
       .then((data) => {
-        setInvoiceData(data);
         setFormData({
           invoiceNumber: data.invoiceNumber,
           issueDate: new Date(data.issueDate).toISOString().split('T')[0],
@@ -58,43 +53,6 @@ export default function EditInvoicePage() {
       });
   }, [id]);
 
-  const handleGenerateAINarrative = async () => {
-    if (!invoiceData?.case) {
-      setError('Case data not available');
-      return;
-    }
-
-    setAiGenerating(true);
-    setError('');
-
-    try {
-      const timeEntriesResponse = await fetch(`/api/time-entries?caseId=${invoiceData.case.id}`);
-      const timeEntries = await timeEntriesResponse.json();
-
-      const response = await fetch('/api/ai/invoice-summary', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          caseTitle: invoiceData.case.title,
-          timeEntries: timeEntries.map((te: any) => ({
-            description: te.description,
-            hours: te.hours,
-            date: te.date,
-          })),
-        }),
-      });
-
-      if (!response.ok) throw new Error('Failed to generate narrative');
-
-      const data = await response.json();
-      setFormData((prev) => ({ ...prev, aiNarrative: data.narrative }));
-    } catch (err) {
-      setError('Failed to generate AI narrative. Please try again.');
-    } finally {
-      setAiGenerating(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -110,7 +68,7 @@ export default function EditInvoicePage() {
       if (!response.ok) throw new Error('Failed to update invoice');
 
       router.push(`/billing/invoices/${id}`);
-    } catch (err) {
+    } catch {
       setError('Failed to update invoice. Please try again.');
     } finally {
       setLoading(false);
@@ -197,19 +155,10 @@ export default function EditInvoicePage() {
           </TextField>
 
           <Box sx={{ mb: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            <Box sx={{ mb: 1 }}>
               <Typography variant="body2" color="text.secondary">
                 Invoice Narrative (Optional)
               </Typography>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={aiGenerating ? <CircularProgress size={16} /> : <AutoAwesomeIcon />}
-                onClick={handleGenerateAINarrative}
-                disabled={aiGenerating}
-              >
-                {aiGenerating ? 'Generating...' : 'Generate with AI'}
-              </Button>
             </Box>
             <TextField
               fullWidth
@@ -217,7 +166,7 @@ export default function EditInvoicePage() {
               onChange={(e) => setFormData({ ...formData, aiNarrative: e.target.value })}
               multiline
               rows={4}
-              placeholder="AI can generate a professional summary of work performed based on time entries..."
+              placeholder="Enter a reviewed summary of the work performed"
             />
           </Box>
 
