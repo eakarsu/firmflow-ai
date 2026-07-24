@@ -125,6 +125,21 @@ model User {
   documentReviews  DocumentReview[]       @relation("DocumentReviewer")
   auditEvents      GovernanceAuditEvent[] @relation("AuditActor")
   createdClients   Client[]               @relation("ClientCreator")
+  runtimeAiResults RuntimeAiResult[]
+}
+
+model RuntimeAiResult {
+  id                 String   @id @default(uuid())
+  userId             String
+  feature            String
+  input              Json
+  output             String
+  model              String
+  providerResponseId String?
+  createdAt          DateTime @default(now())
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 model Client {
